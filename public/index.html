@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>InnoswaiFX - Dashboard</title>
+  <link rel="manifest" href="/manifest.json">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root { --bg: #0a0a1a; --card: #1a1a2e; --gold: #ffb300; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: #eee; font-family: 'Segoe UI', sans-serif; }
+    header { background: #111; padding: 15px; display: flex; justify-content: space-between; align-items: center; }
+    .logo { font-weight: bold; color: var(--gold); font-size: 20px; }
+    .price-ticker { background: var(--card); padding: 12px; text-align: center; font-size: 18px; font-weight: bold; margin: 10px; border-radius: 10px; }
+    .chart-container { width: 95%; margin: auto; background: #131722; border-radius: 10px; padding: 5px; }
+    .btn { padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; }
+    .buy { background: #00c853; color: white; }
+    .sell { background: #ff1744; color: white; }
+    .flex-buttons { display: flex; gap: 10px; margin: 15px; }
+    .card { background: var(--card); margin: 10px; padding: 15px; border-radius: 10px; }
+    .stars { color: gold; }
+    nav { background: #111; padding: 10px; display: flex; justify-content: space-around; position: fixed; bottom: 0; width: 100%; }
+    nav a { color: #aaa; text-decoration: none; font-size: 14px; }
+    nav a.active { color: var(--gold); }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="logo">INNOSWAIFX</span>
+    <a href="/admin.html" style="color:#fff;">🔑 Admin</a>
+  </header>
+
+  <div class="price-ticker" id="livePrice">EUR/USD: --</div>
+
+  <div class="chart-container">
+    <canvas id="priceChart" height="250"></canvas>
+  </div>
+
+  <div class="flex-buttons">
+    <button class="btn buy" onclick="trade('buy')">BUY</button>
+    <button class="btn sell" onclick="trade('sell')">SELL</button>
+  </div>
+
+  <div class="card" id="analysisCard">
+    <h3>📊 NY Close Analysis</h3>
+    <div id="analysisContent">Loading...</div>
+  </div>
+
+  <nav>
+    <a href="/index.html" class="active">🏠 Home</a>
+    <a href="/academy.html">🎓 Academy</a>
+    <a href="/news.html">📰 News</a>
+    <a href="/subscription.html">💳 Subscribe</a>
+  </nav>
+
+  <script>
+    const SYMBOL = 'EUR/USD';
+    let chart;
+    const ctx = document.getElementById('priceChart').getContext('2d');
+    chart = new Chart(ctx, {
+      type: 'line',
+      data: { labels: [], datasets: [{ label: SYMBOL, borderColor: '#00bcd4', borderWidth: 2, pointRadius: 0, data: [] }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { x: { display: false }, y: { beginAtZero: false } } }
+    });
+
+    async function fetchPrice() {
+      try {
+        const res = await fetch('/api/price/' + SYMBOL);
+        const data = await res.json();
+        if (data.price) {
+          const price = parseFloat(data.price);
+          document.getElementById('livePrice').innerHTML = `${SYMBOL}: ${price.toFixed(5)}`;
+          chart.data.labels.push(new Date().toLocaleTimeString());
+          chart.data.datasets[0].data.push(price);
+          if (chart.data.labels.length > 30) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+          }
+          chart.update();
+        }
+      } catch(e) {}
+    }
+
+    async function fetchAnalysis() {
+      try {
+        const res = await fetch('/api/analysis/' + SYMBOL);
+        const data = await res.json();
+        document.getElementById('analysisContent').innerHTML = `
+          <p>High: ${data.ny_close_high} / Low: ${data.ny_close_low}</p>
+          <p>Current: ${data.current_price}</p>
+          <p>Breakout: ${data.breakout}</p>
+          <p>Suggested: <strong>${data.suggested_strategy}</strong> <span class="stars">${'★'.repeat(data.stars)}</span></p>
+          <p>All strategies: ${data.all_strategies.map(s => `${s.name} (${s.score})`).join(', ')}</p>
+        `;
+      } catch(e) {}
+    }
+
+    function trade(action) {
+      fetch('/api/trade/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('token') },
+        body: JSON.stringify({ symbol: SYMBOL, volume: 0.01, action })
+      }).then(r => r.json()).then(d => alert(d.success ? 'Trade placed!' : 'Error'));
+    }
+
+    setInterval(fetchPrice, 3000);
+    setInterval(fetchAnalysis, 10000);
+    fetchPrice();
+    fetchAnalysis();
+
+    // Track view (for admin)
+    fetch('/api/admin/views');
+  </script>
+  <p style="text-align:center; font-size:12px; margin:20px 0 60px;">⚠️ Forex trading involves risk. Not financial advice.</p>
+</body>
+</html>
