@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - InnoswaiFX</title>
+  <style>
+    body { background: #0a0a1a; color: #eee; font-family: Arial; padding: 20px; }
+    input, button, textarea { padding: 10px; margin: 5px 0; width: 100%; border-radius: 5px; border: none; }
+    button { background: #ffb300; color: black; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h2>Admin Login</h2>
+  <input id="email" placeholder="Email" value="innoswaifx7@gmail.com"><br>
+  <input id="password" type="password" placeholder="Password"><br>
+  <button onclick="login()">Login</button>
+  <div id="panel" style="display:none;">
+    <h3>Admin Dashboard</h3>
+    <div id="dailyViews">Daily Views: --</div>
+    <h4>Users</h4>
+    <ul id="userList"></ul>
+    <h4>Mass Email</h4>
+    <input id="subject" placeholder="Subject"><br>
+    <textarea id="message" placeholder="Message"></textarea><br>
+    <button onclick="sendMassEmail()">Send to All</button>
+    <h4>Admin Grant</h4>
+    <input id="grantEmail" placeholder="User email"><br>
+    <input id="grantHours" type="number" placeholder="Hours (e.g., 24)"><br>
+    <button onclick="grantAccess()">Generate Temp Token</button>
+    <p id="grantResult"></p>
+  </div>
+<script>
+  async function login() {
+    const res = await fetch('/api/admin/login', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('password').value })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      localStorage.setItem('adminToken', data.token);
+      document.getElementById('panel').style.display = 'block';
+      loadUsers();
+      loadViews();
+    } else alert('Wrong credentials');
+  }
+
+  async function loadUsers() {
+    const res = await fetch('/api/admin/users', { headers: { 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') } });
+    const users = await res.json();
+    document.getElementById('userList').innerHTML = users.map(u => `<li>${u.email} (${u.subscriptionTier})</li>`).join('');
+  }
+
+  async function loadViews() {
+    const res = await fetch('/api/admin/views');
+    const data = await res.json();
+    document.getElementById('dailyViews').innerText = `Daily Views: ${data.views}`;
+  }
+
+  async function sendMassEmail() {
+    const res = await fetch('/api/admin/mass-email', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
+      body: JSON.stringify({ subject: document.getElementById('subject').value, message: document.getElementById('message').value })
+    });
+    alert('Sent!');
+  }
+
+  async function grantAccess() {
+    const res = await fetch('/api/admin/grant', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') },
+      body: JSON.stringify({ userEmail: document.getElementById('grantEmail').value, hours: parseInt(document.getElementById('grantHours').value) })
+    });
+    const data = await res.json();
+    document.getElementById('grantResult').innerText = 'Token: ' + data.tempToken;
+  }
+</script>
+</body>
+</html>
