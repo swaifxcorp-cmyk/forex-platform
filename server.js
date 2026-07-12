@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 // ---- CONFIG ----
-const API_KEY = 'd20fd6aff7b743a19ab951b911ea2357'; // <-- REPLACE
+const API_KEY = 'd20fd6aff7b743a19ab951b911ea2357'; // <-- 
 const ADMIN_PASSWORD = 'innoswa2024!';
 const ADMIN_EMAIL = 'innoswaifx7@gmail.com';
 const JWT_SECRET = 'trading-platform-secret-2024';
